@@ -82,8 +82,8 @@ func handleConnection(connection net.Conn) {
 
 		if strings.Contains(acceptEncoding, " ") {
 			encodings = strings.Split(acceptEncoding, ",")
-			for encoding := 1; encoding < len(encodings); encoding++ {
-				strings.TrimSpace(encodings[encoding])
+			for encoding := 0; encoding < len(encodings); encoding++ {
+				encodings[encoding] = strings.TrimSpace(encodings[encoding])
 			}
 		}
 
