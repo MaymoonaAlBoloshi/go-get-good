@@ -1,0 +1,16 @@
+  990   ls /Users/maymoonabalushi/projects/main/opp-safe-main/docs/e-services/testing/uat/
+  991   rm docs/e-services/testing/uat/16-appeal-interest-of-law-supreme-court.md docs/e-services/testing/uat/20-contesting-judgement-execution.md && ls docs/e-services/testing/uat/
+  992   rm "/Users/maymoonabalushi/projects/main/opp-safe-main/docs/e-services/testing/uat/16-appeal-interest-of-law-supreme-court.md" "/Users/maymoonabalushi/projects/main/opp-safe-main/docs/e-services/testing/uat/20-contesting-judgement-execution.md"
+  993  cd projects/main/opp-portal
+  995  cd mobile
+  996  pnpm android
+  997  codex
+  998  lazygit
+  999  exit
+ 1000  cd projects
+ 1002  cd side
+ 1004  cd codecrafters-http-server-go
+ 1006  nvim
+ 1007  ls
+ 1008  go run ./app/main.go
+ 1009  history  |  grep "go\n" > cat\\n
