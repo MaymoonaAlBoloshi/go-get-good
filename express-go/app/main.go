@@ -93,7 +93,7 @@ func handleConnection(connection net.Conn) {
 			ContentType: response.Text,
 		}
 
-		if slices.Contains(encodings, "gzip") {
+		if slices.Contains(encodings, "gzip") || acceptEncoding == "gzip" {
 			res.ContentEncoding = response.Gzip
 		}
 		response.Write(connection, res)
