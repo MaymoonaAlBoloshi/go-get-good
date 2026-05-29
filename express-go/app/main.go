@@ -46,7 +46,9 @@ func main() {
 	if path == "/" {
 		res = "HTTP/1.1 200 OK\r\n\r\n"
 	} else if pathParts[1] == "echo" {
-		res = pathParts[2]
+		echoStr := pathParts[2]
+		res = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(echoStr), echoStr)
+
 	} else {
 		res = "HTTP/1.1 404 Not Found\r\n\r\n"
 	}
