@@ -74,7 +74,7 @@ func handleConnection(connection net.Conn) {
 			fmt.Println(keyVal)
 		}
 
-	} else if pathParts[1] == "file" {
+	} else if pathParts[1] == "files" {
 		fileName := pathParts[2]
 		content, err := os.ReadFile(filepath.Join(*dirFlag, fileName))
 
@@ -84,9 +84,10 @@ func handleConnection(connection net.Conn) {
 			} else {
 				res = "HTTP/1.1 500 Internal Server Error\r\n\r\n"
 			}
-
+		} else {
 			res = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: " + fmt.Sprintf("%d", len(content)) + "\r\n\r\n" + string(content)
 		}
+
 	} else {
 		res = "HTTP/1.1 404 Not Found\r\n\r\n"
 
