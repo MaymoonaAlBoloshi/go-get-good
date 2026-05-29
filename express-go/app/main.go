@@ -1,9 +1,12 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -13,7 +16,10 @@ var _ = os.Exit
 
 const CRLF = "\r\n"
 
+var dirFlag = flag.String("directory", "", "")
+
 func main() {
+	flag.Parse()
 	fmt.Println("Logs from your program will appear here!")
 
 	app, err := net.Listen("tcp", "0.0.0.0:4221")
@@ -68,6 +74,19 @@ func handleConnection(connection net.Conn) {
 			fmt.Println(keyVal)
 		}
 
+	} else if pathParts[1] == "file" {
+		fileName := pathParts[2]
+		content, err := os.ReadFile(filepath.Join(*dirFlag, fileName))
+
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				res = "HTTP/1.1 404 Not Found\r\n\r\n"
+			} else {
+				res = "HTTP/1.1 500 Internal Server Error\r\n\r\n"
+			}
+
+			res = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: " + fmt.Sprintf("%d", len(content)) + "\r\n\r\n" + string(content)
+		}
 	} else {
 		res = "HTTP/1.1 404 Not Found\r\n\r\n"
 
