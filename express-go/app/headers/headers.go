@@ -8,6 +8,7 @@ const (
 	ContentLength  = "Content-Length"
 	Host           = "Host"
 	AcceptEncoding = "Accept-Encoding"
+	Connection     = "Connection"
 )
 
 func Parse(lines []string) []string {
