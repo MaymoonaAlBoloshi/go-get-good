@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,14 +14,9 @@ import (
 	"strings"
 
 	"github.com/codecrafters-io/http-server-starter-go/app/headers"
+	"github.com/codecrafters-io/http-server-starter-go/app/request"
 	"github.com/codecrafters-io/http-server-starter-go/app/response"
 )
-
-// Ensures gofmt doesn't remove the "net" and "os" imports above (feel free to remove this!)
-var _ = net.Listen
-var _ = os.Exit
-
-const CRLF = "\r\n"
 
 var dirFlag = flag.String("directory", "", "")
 
@@ -56,28 +53,25 @@ func handleConnection(connection net.Conn) {
 		return
 	}
 
-	req := string(buf[:n])
-	lines := strings.Split(req, CRLF)
+	req, ok := request.Parse(string(buf[:n]))
+	if !ok {
+		response.Write(connection, response.Response{
+			StatusCode: 400,
+		})
+		return
+	}
 
-	path := strings.Split(lines[0], " ")[1]
+	fmt.Println(req.Method)
 
-	method := strings.Split(lines[0], " ")[0]
-
-	pathParts := strings.Split(path, "/")
-
-	headerLines := headers.Parse(lines)
-
-	fmt.Println(method)
-
-	if path == "/" {
+	if req.Path == "/" {
 		response.Write(connection, response.Response{
 			StatusCode: 200,
 		})
 
-	} else if pathParts[1] == "echo" {
-		echoStr := pathParts[2]
+	} else if req.PathParts[1] == "echo" {
+		echoStr := req.PathParts[2]
 
-		acceptEncoding := headers.Get(headerLines, headers.AcceptEncoding)
+		acceptEncoding := headers.Get(req.Headers, headers.AcceptEncoding)
 		encodings := []string{}
 
 		if strings.Contains(acceptEncoding, " ") {
@@ -94,33 +88,32 @@ func handleConnection(connection net.Conn) {
 		}
 
 		if slices.Contains(encodings, "gzip") || acceptEncoding == "gzip" {
+
+			compressed, err := compressGzip([]byte(echoStr))
+			if err != nil {
+				response.Write(connection, response.Response{
+					StatusCode: 500,
+				})
+				return
+			}
+			res.Body = string(compressed)
 			res.ContentEncoding = response.Gzip
+
 		}
 		response.Write(connection, res)
 
-	} else if pathParts[1] == "user-agent" {
-		userAgent := headers.Get(headerLines, headers.UserAgent)
+	} else if req.PathParts[1] == headers.UserAgent {
+		userAgent := headers.Get(req.Headers, headers.UserAgent)
 		response.Write(connection, response.Response{
 			StatusCode:  200,
 			Body:        userAgent,
 			ContentType: response.Text,
 		})
 
-	} else if pathParts[1] == "files" {
-		fileName := pathParts[2]
-		if method == "POST" {
-			contentLength := headers.Get(headerLines, headers.ContentLength)
-			parts := strings.SplitN(req, CRLF+CRLF, 2)
-
-			if len(parts) < 2 {
-				response.Write(connection, response.Response{
-					StatusCode: 400,
-				})
-				return
-			}
-
-			body := parts[1]
-
+	} else if req.PathParts[1] == "files" {
+		fileName := req.PathParts[2]
+		if req.Method == "POST" {
+			contentLength := headers.Get(req.Headers, headers.ContentLength)
 			size, err := strconv.Atoi(contentLength)
 			if err != nil || size < 0 {
 				response.Write(connection, response.Response{
@@ -129,12 +122,12 @@ func handleConnection(connection net.Conn) {
 				return
 			}
 
-			content := []byte(body)
+			content := []byte(req.Body)
 			if len(content) > size {
 				content = content[:size]
 			}
 
-			filePath, isFiles := strings.CutPrefix(path, "/files/")
+			filePath, isFiles := strings.CutPrefix(req.Path, "/files/")
 			if isFiles {
 				os.WriteFile(*dirFlag+string(filePath), content, 0644)
 				response.Write(connection, response.Response{
@@ -174,4 +167,16 @@ func handleConnection(connection net.Conn) {
 		})
 
 	}
+}
+
+func compressGzip(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	writer := gzip.NewWriter(&buf)
+	if _, err := writer.Write(data); err != nil {
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
