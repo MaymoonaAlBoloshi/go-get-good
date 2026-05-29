@@ -7,7 +7,11 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+
+	"github.com/codecrafters-io/http-server-starter-go/app/headers"
+	"github.com/codecrafters-io/http-server-starter-go/app/response"
 )
 
 // Ensures gofmt doesn't remove the "net" and "os" imports above (feel free to remove this!)
@@ -41,11 +45,14 @@ func main() {
 }
 
 func handleConnection(connection net.Conn) {
+	defer connection.Close()
+
 	buf := make([]byte, 1024)
 	n, err := connection.Read(buf)
 
 	if err != nil {
 		fmt.Println("Error accepting connection: ", err.Error())
+		return
 	}
 
 	req := string(buf[:n])
@@ -53,48 +60,61 @@ func handleConnection(connection net.Conn) {
 
 	path := strings.Split(lines[0], " ")[1]
 
-	pathParts := strings.Split(path, "/")
-	fmt.Println(path)
+	method := strings.Split(lines[0], " ")[0]
 
-	var res string
+	pathParts := strings.Split(path, "/")
+
+	headerLines := headers.Parse(lines)
+
+	fmt.Println(method)
+
 	if path == "/" {
-		res = "HTTP/1.1 200 OK\r\n\r\n"
+		response.Write(connection, 200, "", "")
 
 	} else if pathParts[1] == "echo" {
 		echoStr := pathParts[2]
-		res = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(echoStr), echoStr)
+		response.Write(connection, 200, echoStr, response.Text)
 
 	} else if pathParts[1] == "user-agent" {
-		for line := 1; line < len(lines); line++ {
-			keyVal := strings.Split(lines[line], ":")
-			if keyVal[0] == "User-Agent" {
-				userAgent := strings.TrimSpace(keyVal[1])
-				res = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(userAgent), userAgent)
-			}
-			fmt.Println(keyVal)
-		}
+		userAgent := headers.Get(headerLines, headers.UserAgent)
+		response.Write(connection, 200, userAgent, response.Text)
 
 	} else if pathParts[1] == "files" {
 		fileName := pathParts[2]
-		content, err := os.ReadFile(filepath.Join(*dirFlag, fileName))
+		if method == "POST" {
+			contentLength := headers.Get(headerLines, headers.ContentLength)
 
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				res = "HTTP/1.1 404 Not Found\r\n\r\n"
-			} else {
-				res = "HTTP/1.1 500 Internal Server Error\r\n\r\n"
+			size, err := strconv.Atoi(contentLength)
+			if err != nil || size < 0 {
+				response.Write(connection, 400, "", "")
+				return
 			}
+			content := make([]byte, size)
+
+			filePath, isFiles := strings.CutPrefix(path, "/files/")
+			if isFiles {
+				os.WriteFile(*dirFlag+string(filePath), content, 0644)
+				response.Write(connection, 201, string(content), response.File)
+				// response.Write(connection, 200, string(content), response.File)
+				return
+			}
+
 		} else {
-			res = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: " + fmt.Sprintf("%d", len(content)) + "\r\n\r\n" + string(content)
+			content, err := os.ReadFile(filepath.Join(*dirFlag, fileName))
+
+			if err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					response.Write(connection, 404, "", "")
+				} else {
+					response.Write(connection, 500, "", "")
+				}
+			} else {
+				response.Write(connection, 200, string(content), response.File)
+			}
 		}
 
 	} else {
-		res = "HTTP/1.1 404 Not Found\r\n\r\n"
+		response.Write(connection, 404, "", "")
 
 	}
-	fmt.Println(res)
-
-	connection.Write([]byte(res))
-
-	connection.Close()
 }
