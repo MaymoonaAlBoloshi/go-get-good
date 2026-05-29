@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -77,6 +78,14 @@ func handleConnection(connection net.Conn) {
 		echoStr := pathParts[2]
 
 		acceptEncoding := headers.Get(headerLines, headers.AcceptEncoding)
+		encodings := []string{}
+
+		if strings.Contains(acceptEncoding, " ") {
+			encodings = strings.Split(acceptEncoding, ",")
+			for encoding := 1; encoding < len(encodings); encoding++ {
+				strings.TrimSpace(encodings[encoding])
+			}
+		}
 
 		res := response.Response{
 			StatusCode:  200,
@@ -84,7 +93,7 @@ func handleConnection(connection net.Conn) {
 			ContentType: response.Text,
 		}
 
-		if acceptEncoding == "gzip" {
+		if slices.Contains(encodings, "gzip") {
 			res.ContentEncoding = response.Gzip
 		}
 		response.Write(connection, res)
