@@ -3,10 +3,11 @@ package headers
 import "strings"
 
 const (
-	UserAgent     = "User-Agent"
-	ContentType   = "Content-Type"
-	ContentLength = "Content-Length"
-	Host          = "Host"
+	UserAgent      = "User-Agent"
+	ContentType    = "Content-Type"
+	ContentLength  = "Content-Length"
+	Host           = "Host"
+	AcceptEncoding = "Accept-Encoding"
 )
 
 func Parse(lines []string) []string {

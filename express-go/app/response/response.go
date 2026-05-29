@@ -8,6 +8,7 @@ import (
 const (
 	File = "file"
 	Text = "text"
+	Gzip = "gzip"
 )
 
 var statusText = map[int]string{
@@ -23,23 +24,34 @@ var contentTypeText = map[string]string{
 	Text: "text/plain",
 }
 
-func Write(conn net.Conn, statusCode int, body string, contentType string) {
-	status := statusText[statusCode]
+type Response struct {
+	StatusCode      int
+	Body            string
+	ContentType     string
+	ContentEncoding string
+}
+
+func Write(conn net.Conn, res Response) {
+	status := statusText[res.StatusCode]
 	if status == "" {
 		status = "Unknown"
 	}
 
-	resp := fmt.Sprintf("HTTP/1.1 %d %s\r\n", statusCode, status)
+	resp := fmt.Sprintf("HTTP/1.1 %d %s\r\n", res.StatusCode, status)
 
-	if contentType != "" {
-		resp += fmt.Sprintf("Content-Type: %s\r\n", contentTypeText[contentType])
+	if res.ContentType != "" {
+		resp += fmt.Sprintf("Content-Type: %s\r\n", contentTypeText[res.ContentType])
 	}
 
-	if body != "" || contentType != "" {
-		resp += fmt.Sprintf("Content-Length: %d\r\n", len(body))
+	if res.ContentEncoding != "" {
+		resp += fmt.Sprintf("Content-Encoding: %s\r\n", res.ContentEncoding)
 	}
 
-	resp += "\r\n" + body
+	if res.Body != "" || res.ContentType != "" {
+		resp += fmt.Sprintf("Content-Length: %d\r\n", len(res.Body))
+	}
+
+	resp += "\r\n" + res.Body
 
 	conn.Write([]byte(resp))
 }

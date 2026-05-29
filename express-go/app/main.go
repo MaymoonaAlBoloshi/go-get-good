@@ -69,15 +69,33 @@ func handleConnection(connection net.Conn) {
 	fmt.Println(method)
 
 	if path == "/" {
-		response.Write(connection, 200, "", "")
+		response.Write(connection, response.Response{
+			StatusCode: 200,
+		})
 
 	} else if pathParts[1] == "echo" {
 		echoStr := pathParts[2]
-		response.Write(connection, 200, echoStr, response.Text)
+
+		acceptEncoding := headers.Get(headerLines, headers.AcceptEncoding)
+
+		res := response.Response{
+			StatusCode:  200,
+			Body:        echoStr,
+			ContentType: response.Text,
+		}
+
+		if acceptEncoding == "gzip" {
+			res.ContentEncoding = response.Gzip
+		}
+		response.Write(connection, res)
 
 	} else if pathParts[1] == "user-agent" {
 		userAgent := headers.Get(headerLines, headers.UserAgent)
-		response.Write(connection, 200, userAgent, response.Text)
+		response.Write(connection, response.Response{
+			StatusCode:  200,
+			Body:        userAgent,
+			ContentType: response.Text,
+		})
 
 	} else if pathParts[1] == "files" {
 		fileName := pathParts[2]
@@ -86,7 +104,9 @@ func handleConnection(connection net.Conn) {
 			parts := strings.SplitN(req, CRLF+CRLF, 2)
 
 			if len(parts) < 2 {
-				response.Write(connection, 400, "", "")
+				response.Write(connection, response.Response{
+					StatusCode: 400,
+				})
 				return
 			}
 
@@ -94,7 +114,9 @@ func handleConnection(connection net.Conn) {
 
 			size, err := strconv.Atoi(contentLength)
 			if err != nil || size < 0 {
-				response.Write(connection, 400, "", "")
+				response.Write(connection, response.Response{
+					StatusCode: 400,
+				})
 				return
 			}
 
@@ -106,7 +128,11 @@ func handleConnection(connection net.Conn) {
 			filePath, isFiles := strings.CutPrefix(path, "/files/")
 			if isFiles {
 				os.WriteFile(*dirFlag+string(filePath), content, 0644)
-				response.Write(connection, 201, string(content), response.File)
+				response.Write(connection, response.Response{
+					StatusCode:  201,
+					Body:        string(content),
+					ContentType: response.File,
+				})
 				// response.Write(connection, 200, string(content), response.File)
 				return
 			}
@@ -116,17 +142,27 @@ func handleConnection(connection net.Conn) {
 
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					response.Write(connection, 404, "", "")
+					response.Write(connection, response.Response{
+						StatusCode: 404,
+					})
 				} else {
-					response.Write(connection, 500, "", "")
+					response.Write(connection, response.Response{
+						StatusCode: 500,
+					})
 				}
 			} else {
-				response.Write(connection, 200, string(content), response.File)
+				response.Write(connection, response.Response{
+					StatusCode:  200,
+					Body:        string(content),
+					ContentType: response.File,
+				})
 			}
 		}
 
 	} else {
-		response.Write(connection, 404, "", "")
+		response.Write(connection, response.Response{
+			StatusCode: 404,
+		})
 
 	}
 }
