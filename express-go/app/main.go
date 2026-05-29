@@ -83,13 +83,25 @@ func handleConnection(connection net.Conn) {
 		fileName := pathParts[2]
 		if method == "POST" {
 			contentLength := headers.Get(headerLines, headers.ContentLength)
+			parts := strings.SplitN(req, CRLF+CRLF, 2)
+
+			if len(parts) < 2 {
+				response.Write(connection, 400, "", "")
+				return
+			}
+
+			body := parts[1]
 
 			size, err := strconv.Atoi(contentLength)
 			if err != nil || size < 0 {
 				response.Write(connection, 400, "", "")
 				return
 			}
-			content := make([]byte, size)
+
+			content := []byte(body)
+			if len(content) > size {
+				content = content[:size]
+			}
 
 			filePath, isFiles := strings.CutPrefix(path, "/files/")
 			if isFiles {
