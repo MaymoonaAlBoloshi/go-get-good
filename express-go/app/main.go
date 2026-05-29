@@ -102,7 +102,7 @@ func handleConnection(connection net.Conn) {
 		}
 		response.Write(connection, res)
 
-	} else if req.PathParts[1] == headers.UserAgent {
+	} else if req.PathParts[1] == "user-agent" {
 		userAgent := headers.Get(req.Headers, headers.UserAgent)
 		response.Write(connection, response.Response{
 			StatusCode:  200,
