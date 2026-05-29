@@ -52,13 +52,12 @@ func main() {
 	} else if pathParts[1] == "user-agent" {
 
 		fmt.Println("correct spot")
-		// var userAgent string
 
 		for l := 1; l < len(lines); l++ {
 			keyVal := strings.Split(lines[l], ":")
 			if keyVal[0] == "User-Agent" {
-
-				res = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(keyVal[1]), keyVal[1])
+				userAgent := strings.TrimSpace(keyVal[1])
+				res = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(userAgent), userAgent)
 			}
 			fmt.Println(keyVal)
 		}
