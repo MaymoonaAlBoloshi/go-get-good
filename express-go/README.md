@@ -1,37 +1,93 @@
-[![progress-banner](https://backend.codecrafters.io/progress/http-server/aa239d8e-5d44-4940-a1de-8b93030e551b)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# express-go
 
-This is a starting point for Go solutions to the
-["Build Your Own HTTP server" Challenge](https://app.codecrafters.io/courses/http-server/overview).
+Tiny HTTP/1.1 server in Go.
 
-[HTTP](https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol) is the
-protocol that powers the web. In this challenge, you'll build a HTTP/1.1 server
-that is capable of serving multiple clients.
+This was written for learning purposes, mostly through the CodeCrafters HTTP
+server challenge. It is not a production server. Some parts are rough, direct,
+and incomplete, because the point was to learn how HTTP works by building the
+pieces by hand.
 
-Along the way you'll learn about TCP servers,
-[HTTP request syntax](https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html),
-and more.
+## What exists in it
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+- a TCP server listening on port `4221`
+- a tiny router with `GET` and `POST`
+- basic HTTP request parsing
+- HTTP responses with status, headers, and body
+- routes for `/`, `/echo/*`, `/user-agent`, and `/files/*`
+- file reads and writes with `--directory`
+- gzip response compression for `/echo/*`
+- persistent connections unless `Connection: close` is sent
 
-# Passing the first stage
+## Run it
 
-The entry point for your HTTP server implementation is in `app/main.go`. Study
-and uncomment the relevant code, and push your changes to pass the first stage:
-
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+```bash
+go run ./app
 ```
 
-Time to move on to the next stage!
+With a file directory:
 
-# Stage 2 & beyond
+```bash
+go run ./app --directory /tmp/
+```
 
-Note: This section is for stages 2 and beyond.
+For development with `air`:
 
-1. Ensure you have `go (1.26)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `app/main.go`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+```bash
+./dev.sh
+```
+
+## Routes
+
+`GET /`
+Returns `200 OK`.
+
+```bash
+curl -i http://localhost:4221/
+```
+
+`GET /echo/*`
+Echoes the path text back as `text/plain`.
+
+```bash
+curl -i http://localhost:4221/echo/hello
+```
+
+`GET /user-agent`
+Returns the `User-Agent` header.
+
+```bash
+curl -i http://localhost:4221/user-agent
+```
+
+`GET /files/*`
+Reads a file from the directory passed with `--directory`.
+
+```bash
+curl -i http://localhost:4221/files/test.txt
+```
+
+`POST /files/*`
+Writes the request body to a file in the directory passed with `--directory`.
+
+```bash
+curl -i -X POST http://localhost:4221/files/test.txt -d "hello"
+```
+
+## Compression
+
+Supported:
+
+```bash
+curl -i -H "Accept-Encoding: gzip" http://localhost:4221/echo/hello
+```
+
+## Limits
+
+- not a real web framework
+- no TLS
+- no middleware
+- no query parsing
+- no chunked requests or responses
+- request parsing is simple and assumes small requests
+- wildcard routing only supports routes ending in `/*`
+- file paths are intentionally simple and not hardened

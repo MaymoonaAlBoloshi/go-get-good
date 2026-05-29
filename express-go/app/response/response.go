@@ -29,6 +29,7 @@ type Response struct {
 	Body            string
 	ContentType     string
 	ContentEncoding string
+	Connection      string
 }
 
 func Write(conn net.Conn, res Response) {
@@ -45,6 +46,10 @@ func Write(conn net.Conn, res Response) {
 
 	if res.ContentEncoding != "" {
 		resp += fmt.Sprintf("Content-Encoding: %s\r\n", res.ContentEncoding)
+	}
+
+	if res.Connection != "" {
+		resp += fmt.Sprintf("Connection: %s\r\n", res.Connection)
 	}
 
 	if res.Body != "" || res.ContentType != "" {

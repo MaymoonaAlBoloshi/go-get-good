@@ -73,23 +73,29 @@ func handleConnection(connection net.Conn, server *http.App) {
 
 		fmt.Println(req.Method)
 
-		server.Serve(connection, req)
-
 		connectionHeader := headers.Get(req.Headers, headers.Connection)
+		shouldClose := strings.EqualFold(connectionHeader, "close")
 
-		if connectionHeader == "close" {
+		res := server.Handle(req)
+		if shouldClose {
+			res.Connection = "close"
+		}
+
+		response.Write(connection, res)
+
+		if shouldClose {
 			return
 		}
 	}
 }
 
-func handleRoot(connection net.Conn, req request.Request) {
-	response.Write(connection, response.Response{
+func handleRoot(req request.Request) response.Response {
+	return response.Response{
 		StatusCode: 200,
-	})
+	}
 }
 
-func handleEcho(connection net.Conn, req request.Request) {
+func handleEcho(req request.Request) response.Response {
 	echoStr := req.PathParts[2]
 
 	acceptEncoding := headers.Get(req.Headers, headers.AcceptEncoding)
@@ -111,59 +117,55 @@ func handleEcho(connection net.Conn, req request.Request) {
 	if slices.Contains(encodings, "gzip") || acceptEncoding == "gzip" {
 		compressed, err := compressGzip([]byte(echoStr))
 		if err != nil {
-			response.Write(connection, response.Response{
+			return response.Response{
 				StatusCode: 500,
-			})
-			return
+			}
 		}
 		res.Body = string(compressed)
 		res.ContentEncoding = response.Gzip
 	}
 
-	response.Write(connection, res)
+	return res
 }
 
-func handleUserAgent(connection net.Conn, req request.Request) {
+func handleUserAgent(req request.Request) response.Response {
 	userAgent := headers.Get(req.Headers, headers.UserAgent)
-	response.Write(connection, response.Response{
+	return response.Response{
 		StatusCode:  200,
 		Body:        userAgent,
 		ContentType: response.Text,
-	})
+	}
 }
 
-func handleGetFile(connection net.Conn, req request.Request) {
+func handleGetFile(req request.Request) response.Response {
 	fileName := req.PathParts[2]
 	content, err := os.ReadFile(filepath.Join(*dirFlag, fileName))
 
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			response.Write(connection, response.Response{
+			return response.Response{
 				StatusCode: 404,
-			})
-		} else {
-			response.Write(connection, response.Response{
-				StatusCode: 500,
-			})
+			}
 		}
-		return
+		return response.Response{
+			StatusCode: 500,
+		}
 	}
 
-	response.Write(connection, response.Response{
+	return response.Response{
 		StatusCode:  200,
 		Body:        string(content),
 		ContentType: response.File,
-	})
+	}
 }
 
-func handlePostFile(connection net.Conn, req request.Request) {
+func handlePostFile(req request.Request) response.Response {
 	contentLength := headers.Get(req.Headers, headers.ContentLength)
 	size, err := strconv.Atoi(contentLength)
 	if err != nil || size < 0 {
-		response.Write(connection, response.Response{
+		return response.Response{
 			StatusCode: 400,
-		})
-		return
+		}
 	}
 
 	content := []byte(req.Body)
@@ -173,18 +175,17 @@ func handlePostFile(connection net.Conn, req request.Request) {
 
 	filePath, isFiles := strings.CutPrefix(req.Path, "/files/")
 	if !isFiles {
-		response.Write(connection, response.Response{
+		return response.Response{
 			StatusCode: 404,
-		})
-		return
+		}
 	}
 
 	os.WriteFile(*dirFlag+string(filePath), content, 0644)
-	response.Write(connection, response.Response{
+	return response.Response{
 		StatusCode:  201,
 		Body:        string(content),
 		ContentType: response.File,
-	})
+	}
 }
 
 func compressGzip(data []byte) ([]byte, error) {

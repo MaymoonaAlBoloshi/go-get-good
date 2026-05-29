@@ -1,14 +1,13 @@
 package http
 
 import (
-	"net"
 	"strings"
 
 	"github.com/codecrafters-io/http-server-starter-go/app/request"
 	"github.com/codecrafters-io/http-server-starter-go/app/response"
 )
 
-type Handler func(net.Conn, request.Request)
+type Handler func(request.Request) response.Response
 
 type route struct {
 	method  string
@@ -32,17 +31,16 @@ func (app *App) Post(path string, handler Handler) {
 	app.add("POST", path, handler)
 }
 
-func (app *App) Serve(conn net.Conn, req request.Request) {
+func (app *App) Handle(req request.Request) response.Response {
 	for _, route := range app.routes {
 		if route.method == req.Method && match(route.path, req.Path) {
-			route.handler(conn, req)
-			return
+			return route.handler(req)
 		}
 	}
 
-	response.Write(conn, response.Response{
+	return response.Response{
 		StatusCode: 404,
-	})
+	}
 }
 
 func (app *App) add(method string, path string, handler Handler) {
