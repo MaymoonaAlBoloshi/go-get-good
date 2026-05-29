@@ -39,11 +39,14 @@ func main() {
 	req := string(buf)
 	lines := strings.Split(req, CRLF)
 	path := strings.Split(lines[0], " ")[1]
+	pathParts := strings.Split(path, "/")
 	fmt.Println(path)
 
 	var res string
 	if path == "/" {
 		res = "HTTP/1.1 200 OK\r\n\r\n"
+	} else if pathParts[1] == "echo" {
+		res = pathParts[2]
 	} else {
 		res = "HTTP/1.1 404 Not Found\r\n\r\n"
 	}
